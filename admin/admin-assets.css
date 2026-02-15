@@ -1,67 +1,80 @@
-/* admin/admin-assets.css */
+/* admin/admin-assets.css
+ *
+ * Styles for the Custom Tabs admin editor page.
+ * All classes prefixed with `cts-` to avoid collisions.
+ */
 
-.custom-tabs-admin-wrap {
-    max-width: 1400px;
+/* -------------------------------------------------------
+   Layout
+   ------------------------------------------------------- */
+
+.cts-wrap {
+    max-width: 1440px;
 }
 
-.custom-tabs-admin-layout {
+.cts-layout {
     display: flex;
     gap: 24px;
     margin-top: 20px;
     align-items: flex-start;
 }
 
-/* Sidebar */
-.custom-tabs-sidebar {
+/* -------------------------------------------------------
+   Sidebar
+   ------------------------------------------------------- */
+
+.cts-sidebar {
     width: 320px;
     min-width: 320px;
     background: #fff;
     border: 1px solid #ccd0d4;
     border-radius: 6px;
     padding: 16px;
+    box-sizing: border-box;
 }
 
-.custom-tabs-sidebar h2 {
-    margin-top: 0;
+.cts-sidebar h2 {
+    margin: 0 0 12px;
     padding-bottom: 10px;
     border-bottom: 1px solid #e2e4e7;
 }
 
-#tab-sets-list {
+.cts-tab-sets-list {
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.tab-set-item {
+/* Individual set item */
+.cts-set-item {
     padding: 12px;
     border: 1px solid #e2e4e7;
     border-radius: 4px;
     margin-bottom: 8px;
     background: #f9f9f9;
-    transition: background 0.2s ease;
+    transition: background 0.15s ease;
 }
 
-.tab-set-item:hover {
+.cts-set-item:hover {
     background: #f0f0f1;
 }
 
-.tab-set-item.active {
+.cts-set-item.cts-set-item--active {
     background: #e8f0fe;
     border-color: #2271b1;
 }
 
-.tab-set-item-info {
+.cts-set-item__info {
     margin-bottom: 8px;
 }
 
-.tab-set-item-info strong {
+.cts-set-item__name {
     display: block;
-    margin-bottom: 4px;
     font-size: 14px;
+    margin-bottom: 4px;
 }
 
-.shortcode-display {
+.cts-set-item__shortcode {
     font-size: 11px;
     background: #e8e8e8;
     padding: 2px 6px;
@@ -70,48 +83,73 @@
     word-break: break-all;
 }
 
-.tab-set-item-actions {
+.cts-set-item__count {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 11px;
+    color: #666;
+}
+
+.cts-set-item__actions {
     display: flex;
     gap: 6px;
 }
 
-.no-tab-sets {
+.cts-set-item--empty {
     color: #888;
     padding: 12px;
     text-align: center;
     font-style: italic;
 }
 
-/* Editor Panel */
-.custom-tabs-editor-panel {
+/* -------------------------------------------------------
+   Editor panel
+   ------------------------------------------------------- */
+
+.cts-editor {
     flex: 1;
     background: #fff;
     border: 1px solid #ccd0d4;
     border-radius: 6px;
     padding: 24px;
+    box-sizing: border-box;
 }
 
-.editor-header {
+.cts-editor__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
+    gap: 12px;
     margin-bottom: 12px;
 }
 
-.editor-header h2 {
+.cts-editor__header h2 {
     margin: 0;
 }
 
-.shortcode-input {
-    width: 280px;
+.cts-shortcode-area {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cts-shortcode-input {
+    width: 290px;
     font-family: monospace;
     font-size: 12px;
     background: #f6f7f7;
 }
 
-/* Tab Editor Items */
-.tab-editor-item {
+/* -------------------------------------------------------
+   Individual tab editor items
+   ------------------------------------------------------- */
+
+.cts-tabs-container {
+    margin-bottom: 12px;
+}
+
+.cts-tab-item {
     background: #f9f9f9;
     border: 1px solid #ddd;
     border-radius: 6px;
@@ -120,16 +158,17 @@
     transition: box-shadow 0.2s ease;
 }
 
-.tab-editor-item:hover {
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+.cts-tab-item:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-.tab-editor-item.dragging {
+.cts-tab-item.cts-tab-item--dragging {
     opacity: 0.5;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.tab-editor-header {
+/* Header bar (drag handle + controls) */
+.cts-tab-item__header {
     display: flex;
     align-items: center;
     padding: 10px 14px;
@@ -139,25 +178,25 @@
     gap: 10px;
 }
 
-.tab-editor-header:active {
+.cts-tab-item__header:active {
     cursor: grabbing;
 }
 
-.drag-handle {
+.cts-tab-item__drag {
     color: #999;
     font-size: 18px;
     cursor: grab;
     user-select: none;
 }
 
-.tab-editor-header .tab-number {
+.cts-tab-item__number {
     font-weight: 600;
     color: #555;
     font-size: 13px;
     min-width: 50px;
 }
 
-.tab-editor-header .tab-title-preview {
+.cts-tab-item__title-preview {
     flex: 1;
     color: #333;
     font-weight: 500;
@@ -166,7 +205,7 @@
     white-space: nowrap;
 }
 
-.tab-editor-header .toggle-tab-btn {
+.cts-tab-item__toggle {
     background: none;
     border: none;
     cursor: pointer;
@@ -176,11 +215,11 @@
     transition: transform 0.2s ease;
 }
 
-.tab-editor-header .toggle-tab-btn.collapsed {
+.cts-tab-item__toggle.cts-collapsed {
     transform: rotate(-90deg);
 }
 
-.tab-editor-header .remove-tab-btn {
+.cts-tab-item__remove {
     color: #b32d2e;
     background: none;
     border: none;
@@ -189,28 +228,29 @@
     padding: 2px 8px;
 }
 
-.tab-editor-header .remove-tab-btn:hover {
+.cts-tab-item__remove:hover {
     color: #a00;
     background: #fce4e4;
     border-radius: 3px;
 }
 
-.tab-editor-body {
+/* Body (title input + content textarea) */
+.cts-tab-item__body {
     padding: 16px;
 }
 
-.tab-editor-body.collapsed {
+.cts-tab-item__body.cts-body--hidden {
     display: none;
 }
 
-.tab-editor-body label {
+.cts-tab-item__body label {
     display: block;
     font-weight: 600;
     margin-bottom: 6px;
     color: #333;
 }
 
-.tab-editor-body .tab-title-input {
+.cts-tab-item__body .cts-input-title {
     width: 100%;
     max-width: 400px;
     margin-bottom: 14px;
@@ -218,7 +258,7 @@
     font-size: 14px;
 }
 
-.tab-editor-body .tab-content-textarea {
+.cts-tab-item__body .cts-textarea-content {
     width: 100%;
     min-height: 180px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -227,10 +267,14 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     resize: vertical;
+    box-sizing: border-box;
 }
 
-/* Editor Footer */
-.editor-footer {
+/* -------------------------------------------------------
+   Footer
+   ------------------------------------------------------- */
+
+.cts-editor__footer {
     margin-top: 24px;
     padding-top: 16px;
     border-top: 1px solid #e2e4e7;
@@ -239,14 +283,17 @@
     gap: 12px;
 }
 
-.save-status {
+.cts-save-status {
     color: #00a32a;
     font-weight: 500;
     font-size: 13px;
 }
 
-/* Placeholder */
-.custom-tabs-placeholder {
+/* -------------------------------------------------------
+   Placeholder (nothing selected)
+   ------------------------------------------------------- */
+
+.cts-placeholder {
     flex: 1;
     background: #fff;
     border: 1px solid #ccd0d4;
@@ -257,19 +304,30 @@
     min-height: 400px;
 }
 
-.placeholder-content {
+.cts-placeholder__inner {
     text-align: center;
     color: #999;
 }
 
-/* Live Preview */
-.live-preview-section {
+.cts-placeholder__inner .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #ccc;
+    margin-bottom: 8px;
+}
+
+/* -------------------------------------------------------
+   Live preview section
+   ------------------------------------------------------- */
+
+.cts-preview-section {
     margin-top: 30px;
     padding-top: 20px;
     border-top: 2px solid #e2e4e7;
 }
 
-.live-preview-container {
+.cts-preview-box {
     background: #fafafa;
     border: 1px solid #e2e4e7;
     border-radius: 6px;
@@ -277,20 +335,20 @@
     min-height: 100px;
 }
 
-/* Preview Tab Styles (mirroring frontend) */
-.live-preview-container .tabs {
+/* Mirror frontend tab styles inside the preview */
+.cts-preview-box .tabs {
     background-color: #fff;
     border: 1px solid #e2e7e9;
-    border-radius: .5rem;
+    border-radius: 0.5rem;
 }
 
-.live-preview-container .tabs__tablist {
+.cts-preview-box .tabs__tablist {
     display: flex;
     flex-wrap: wrap;
     border-bottom: 1px solid #d1d5db;
 }
 
-.live-preview-container .tabs__tab {
+.cts-preview-box .tabs__tab {
     border: none;
     background-color: #f3f4f6;
     border-bottom: 2px solid transparent;
@@ -298,38 +356,41 @@
     cursor: pointer;
     flex-grow: 1;
     line-height: 1;
-    padding: 1rem 1rem;
-    position: relative;
+    padding: 1rem;
     font-weight: 500;
+    font-size: 14px;
     transition: background 0.2s ease, color 0.2s ease, border-bottom 0.2s ease;
 }
 
-.live-preview-container .tabs__tab:hover {
+.cts-preview-box .tabs__tab:hover {
     background: #e5e7eb;
 }
 
-.live-preview-container .tabs__tab.preview-active {
+.cts-preview-box .tabs__tab.cts-preview-active {
     background: #ffffff;
     color: #111827;
     border-bottom: 4px solid #4b5563;
     font-weight: 600;
 }
 
-.live-preview-container .tabs__panel {
+.cts-preview-box .tabs__panel {
     padding: 1rem;
     display: none;
 }
 
-.live-preview-container .tabs__panel.preview-visible {
+.cts-preview-box .tabs__panel.cts-preview-visible {
     display: block;
 }
 
-/* Responsive */
+/* -------------------------------------------------------
+   Responsive
+   ------------------------------------------------------- */
+
 @media (max-width: 960px) {
-    .custom-tabs-admin-layout {
+    .cts-layout {
         flex-direction: column;
     }
-    .custom-tabs-sidebar {
+    .cts-sidebar {
         width: 100%;
         min-width: auto;
     }
