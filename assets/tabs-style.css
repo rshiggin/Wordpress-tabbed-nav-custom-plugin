@@ -1,15 +1,19 @@
-/* assets/tabs-style.css */
-
-[data-tab-list] {
-    display: flex;
-    border-bottom: 1px solid #d1d5db;
-}
+/* assets/tabs-style.css
+ *
+ * Styles for the [custom_tabs] shortcode output.
+ */
 
 .tabs {
     background-color: #fff;
     border: 1px solid #e2e7e9;
-    border-radius: .5rem;
+    border-radius: 0.5rem;
     margin: 1rem 0;
+}
+
+.tabs__tablist {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #d1d5db;
 }
 
 .tabs__tab {
@@ -20,25 +24,16 @@
     cursor: pointer;
     flex-grow: 1;
     line-height: 1;
-    padding: 1rem 1rem;
+    padding: 1rem;
     position: relative;
-    z-index: 100;
+    z-index: 1;
     font-weight: 500;
     font-size: 1rem;
+    font-family: inherit;
     transition:
         background 0.2s ease,
         color 0.2s ease,
         border-bottom 0.2s ease;
-}
-
-.tabs__tablist {
-    display: flex;
-    flex-wrap: wrap;
-    border-bottom: 1px solid #d1d5db;
-}
-
-.tabs__panel {
-    padding: 1rem;
 }
 
 .tabs__tab:hover {
@@ -52,13 +47,24 @@
     font-weight: 600;
 }
 
-.tabs__tab:focus {
+.tabs__tab:focus-visible {
     outline: 2px solid #9ca3af;
-    outline-offset: 2px;
+    outline-offset: -2px;
 }
 
-/* Responsive stacking for small screens */
-@media (max-width: 600px) {
+.tabs__panel {
+    padding: 1rem;
+}
+
+.tabs__panel[hidden] {
+    display: none;
+}
+
+/* -------------------------------------------------------
+   Responsive: stack tabs vertically on narrow screens
+   ------------------------------------------------------- */
+
+@media ( max-width: 600px ) {
     .tabs__tablist {
         flex-direction: column;
     }
@@ -66,6 +72,7 @@
     .tabs__tab {
         text-align: left;
         border-bottom: 1px solid #e2e7e9;
+        border-left: 3px solid transparent;
     }
 
     .tabs__tab[aria-selected="true"] {
