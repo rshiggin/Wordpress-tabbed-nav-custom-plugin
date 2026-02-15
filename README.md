@@ -6,7 +6,8 @@ Create the folder wp-content/plugins/custom-tabs-shortcode/
 Place all files in their respective paths    
 Activate the plugin in Plugins → Installed Plugins  
 
-### Plugin File Structure   
+### Plugin File Structure  
+```
 wp-content/plugins/custom-tabs-shortcode/
 ├── main.php
 ├── admin/
@@ -15,6 +16,7 @@ wp-content/plugins/custom-tabs-shortcode/
 └── assets/
     ├── tabs-style.css
     └── tabs-script.js
+```      
 
 ### Creating Tabs        
 Go to Custom Tabs in the WordPress admin menu    
