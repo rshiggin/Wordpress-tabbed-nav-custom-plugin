@@ -8,7 +8,7 @@ Activate the plugin in Plugins → Installed Plugins
 
 ### Plugin File Structure   
 wp-content/plugins/custom-tabs-shortcode/
-├── custom-tabs-shortcode.php
+├── main.php
 ├── admin/
 │   ├── admin-page.php
 │   └── admin-assets.css
