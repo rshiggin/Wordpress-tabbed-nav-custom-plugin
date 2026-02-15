@@ -1,7 +1,9 @@
-?php
+<?php
 // admin/admin-page.php
-if (!defined('ABSPATH')) exit;
-?>
+
+if (!defined('ABSPATH')) {
+    exit;
+}
 <div class="wrap custom-tabs-admin-wrap">
     <h1><?php _e('Custom Tabs Editor', 'custom-tabs-shortcode'); ?></h1>
     <p class="description"><?php _e('Create and manage tabbed content. Use the shortcode <code>[custom_tabs id="your-tab-set-id"]</code> to display tabs on any page or post.', 'custom-tabs-shortcode'); ?></p>
