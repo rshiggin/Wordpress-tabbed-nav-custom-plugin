@@ -30,3 +30,6 @@ Copy the generated shortcode
 Place this shortcode in any post, page, or widget that supports shortcodes.    
 
 ### Features   
+
+### License
+Apache License 2.0
