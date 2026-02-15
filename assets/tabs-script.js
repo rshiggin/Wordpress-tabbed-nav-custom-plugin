@@ -1,73 +1,115 @@
-// assets/tabs-script.js
+/**
+ * assets/tabs-script.js
+ *
+ * Accessible tab widget for [custom_tabs] shortcode output.
+ *
+ * Features:
+ *  - ARIA roles (tablist / tab / tabpanel) with aria-controls / aria-labelledby.
+ *  - Keyboard navigation: ArrowLeft, ArrowRight, Home, End.
+ *  - Supports multiple independent tab groups on one page.
+ *  - Gracefully handles mismatched tab/panel counts.
+ */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener( 'DOMContentLoaded', function () {
 
-    document.querySelectorAll("[data-tabs]").forEach(container => {
+    var containers = document.querySelectorAll( '[data-tabs]' );
 
-        const tabs   = [...container.querySelectorAll("[data-tab]")];
-        const panels = [...container.querySelectorAll("[data-tab-panel]")];
+    for ( var c = 0; c < containers.length; c++ ) {
+        initTabGroup( containers[ c ] );
+    }
 
-        if (!tabs.length || !panels.length) return;
+    /**
+     * Initialise one tab group.
+     *
+     * @param {HTMLElement} container  The element with [data-tabs].
+     */
+    function initTabGroup( container ) {
 
-        // Ensure matching tab/panel counts
-        const count = Math.min(tabs.length, panels.length);
+        var tabs   = Array.prototype.slice.call( container.querySelectorAll( '[data-tab]' ) );
+        var panels = Array.prototype.slice.call( container.querySelectorAll( '[data-tab-panel]' ) );
 
-        const activate = (index) => {
-            for (let i = 0; i < count; i++) {
-                const selected = i === index;
-                tabs[i].setAttribute("aria-selected", String(selected));
-                tabs[i].setAttribute("tabindex", selected ? "0" : "-1");
-                panels[i].hidden = !selected;
+        // Only work with matching pairs
+        var count = Math.min( tabs.length, panels.length );
+        if ( count === 0 ) {
+            return;
+        }
+
+        var uid = container.getAttribute( 'data-tabs' ) || 'tabgroup';
+
+        // -- ARIA setup -------------------------------------------
+
+        var tablist = container.querySelector( '[data-tab-list]' );
+        if ( tablist ) {
+            tablist.setAttribute( 'role', 'tablist' );
+        }
+
+        for ( var i = 0; i < count; i++ ) {
+            var tabId   = uid + '-tab-' + i;
+            var panelId = uid + '-panel-' + i;
+
+            tabs[ i ].setAttribute( 'role', 'tab' );
+            tabs[ i ].setAttribute( 'id', tabId );
+            tabs[ i ].setAttribute( 'aria-controls', panelId );
+            tabs[ i ].setAttribute( 'aria-selected', 'false' );
+            tabs[ i ].setAttribute( 'tabindex', '-1' );
+
+            panels[ i ].setAttribute( 'role', 'tabpanel' );
+            panels[ i ].setAttribute( 'id', panelId );
+            panels[ i ].setAttribute( 'aria-labelledby', tabId );
+            panels[ i ].setAttribute( 'tabindex', '0' );
+            panels[ i ].hidden = true;
+
+            // Closure to capture index
+            ( function ( idx ) {
+                tabs[ idx ].addEventListener( 'click', function () {
+                    activate( idx );
+                } );
+
+                tabs[ idx ].addEventListener( 'keydown', function ( e ) {
+                    var next = null;
+
+                    switch ( e.key ) {
+                        case 'ArrowRight': next = ( idx + 1 ) % count;            break;
+                        case 'ArrowLeft':  next = ( idx - 1 + count ) % count;    break;
+                        case 'Home':       next = 0;                              break;
+                        case 'End':        next = count - 1;                      break;
+                    }
+
+                    if ( next !== null ) {
+                        e.preventDefault();
+                        activate( next );
+                    }
+                } );
+            } )( i );
+        }
+
+        // -- Activation -------------------------------------------
+
+        /**
+         * Show the tab at `index`; hide all others.
+         *
+         * @param {number} index
+         */
+        function activate( index ) {
+            for ( var j = 0; j < count; j++ ) {
+                var selected = ( j === index );
+                tabs[ j ].setAttribute( 'aria-selected', String( selected ) );
+                tabs[ j ].setAttribute( 'tabindex', selected ? '0' : '-1' );
+                panels[ j ].hidden = ! selected;
             }
-            tabs[index].focus();
-        };
-
-        // Setup ARIA roles
-        const tablist = container.querySelector("[data-tab-list]");
-        if (tablist) {
-            tablist.setAttribute("role", "tablist");
+            tabs[ index ].focus();
         }
 
-        for (let i = 0; i < count; i++) {
-            const tab = tabs[i];
-            const panel = panels[i];
+        // -- Initial state ----------------------------------------
 
-            // Unique IDs for ARIA linking
-            const tabId = `tab-${container.getAttribute("data-tabs")}-${i}`;
-            const panelId = `panel-${container.getAttribute("data-tabs")}-${i}`;
-
-            tab.setAttribute("role", "tab");
-            tab.setAttribute("id", tabId);
-            tab.setAttribute("aria-controls", panelId);
-            tab.setAttribute("aria-selected", "false");
-            tab.setAttribute("tabindex", "-1");
-
-            panel.setAttribute("role", "tabpanel");
-            panel.setAttribute("id", panelId);
-            panel.setAttribute("aria-labelledby", tabId);
-            panel.hidden = true;
-
-            tab.addEventListener("click", () => activate(i));
-
-            tab.addEventListener("keydown", (e) => {
-                let newIndex = null;
-
-                if (e.key === "ArrowRight") newIndex = (i + 1) % count;
-                if (e.key === "ArrowLeft")  newIndex = (i - 1 + count) % count;
-                if (e.key === "Home")       newIndex = 0;
-                if (e.key === "End")        newIndex = count - 1;
-
-                if (newIndex !== null) {
-                    e.preventDefault();
-                    activate(newIndex);
-                }
-            });
+        var initIndex = -1;
+        for ( var k = 0; k < count; k++ ) {
+            if ( tabs[ k ].hasAttribute( 'data-tab-init' ) ) {
+                initIndex = k;
+                break;
+            }
         }
+        activate( initIndex >= 0 ? initIndex : 0 );
+    }
 
-        // Activate first tab or one marked with data-tab-init
-        const initIndex = tabs.findIndex(t => t.hasAttribute("data-tab-init"));
-        activate(initIndex >= 0 ? initIndex : 0);
-
-    });
-
-});
+} );
