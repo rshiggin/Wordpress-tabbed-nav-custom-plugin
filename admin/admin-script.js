@@ -1,427 +1,505 @@
-// admin/admin-script.js
+/**
+ * admin/admin-script.js
+ *
+ * Custom Tabs Shortcode – Admin editor logic.
+ * Handles CRUD, live preview, drag-and-drop reordering.
+ *
+ * Depends: jQuery (bundled with WP).
+ * Receives: ctsAdmin.ajaxUrl, ctsAdmin.nonce  (via wp_localize_script).
+ */
 
-(function($) {
+( function ( $ ) {
     'use strict';
 
-    let currentEditId = '';
-    let tabCounter = 0;
+    /* -------------------------------------------------
+     *  State
+     * ----------------------------------------------- */
 
-    // ========================
-    // INITIALIZATION
-    // ========================
+    var currentId  = '';   // ID of the tab set being edited ('' = new)
+    var tabCounter = 0;    // Monotonic counter for DOM keys
 
-    $(document).ready(function() {
-        bindEvents();
-    });
+    /* -------------------------------------------------
+     *  Boot
+     * ----------------------------------------------- */
 
-    function bindEvents() {
-        // Sidebar actions
-        $('#create-new-tab-set').on('click', createNewTabSet);
-        $(document).on('click', '.edit-tab-set', function() {
-            loadTabSet($(this).data('id'));
-        });
-        $(document).on('click', '.delete-tab-set', function() {
-            deleteTabSet($(this).data('id'));
-        });
+    $( document ).ready( function () {
+        bindSidebarEvents();
+        bindEditorEvents();
+        bindDragAndDrop();
+    } );
 
-        // Editor actions
-        $('#add-tab-btn').on('click', addNewTab);
-        $(document).on('click', '.remove-tab-btn', removeTab);
-        $(document).on('click', '.toggle-tab-btn', toggleTabBody);
-        $('#tab-set-form').on('submit', saveTabSet);
-        $('#cancel-edit').on('click', cancelEdit);
-        $('#copy-shortcode').on('click', copyShortcode);
+    /* =================================================
+     *  EVENT BINDING
+     * =============================================== */
 
-        // Live preview updates
-        $(document).on('input keyup', '.tab-title-input', updatePreview);
-        $(document).on('input keyup', '.tab-content-textarea', updatePreview);
+    function bindSidebarEvents() {
+        $( '#cts-create-new' ).on( 'click', createNew );
 
-        // Drag and drop
-        initDragAndDrop();
+        $( document ).on( 'click', '.cts-btn-edit', function () {
+            loadSet( $( this ).data( 'id' ) );
+        } );
+
+        $( document ).on( 'click', '.cts-btn-delete', function () {
+            deleteSet( $( this ).data( 'id' ) );
+        } );
     }
 
-    // ========================
-    // CREATE NEW TAB SET
-    // ========================
+    function bindEditorEvents() {
+        $( '#cts-add-tab' ).on( 'click', function () {
+            addTab( 'New Tab', '<p>Enter content here.</p>' );
+            refreshPreview();
+            scrollToBottom();
+        } );
 
-    function createNewTabSet() {
-        currentEditId = '';
-        $('#editing-tab-set-id').val('');
-        $('#tab-set-name').val('');
-        $('#editor-title').text('New Tab Set');
-        $('#shortcode-copy-area').hide();
-        $('#tabs-container').empty();
-        tabCounter = 0;
+        $( document ).on( 'click', '.cts-tab-item__remove', removeTab );
+        $( document ).on( 'click', '.cts-tab-item__toggle', toggleBody );
 
-        // Add two default tabs
-        addTab('Tab One', '<p>Enter content for tab one here.</p>');
-        addTab('Tab Two', '<p>Enter content for tab two here.</p>');
+        $( '#cts-form' ).on( 'submit', saveSet );
+        $( '#cts-cancel' ).on( 'click', cancelEdit );
+        $( '#cts-copy-shortcode' ).on( 'click', copyShortcode );
 
-        showEditor();
-        updatePreview();
+        // Live preview on typing
+        $( document ).on( 'input', '.cts-input-title, .cts-textarea-content', refreshPreview );
     }
 
-    // ========================
-    // LOAD EXISTING TAB SET
-    // ========================
+    /* =================================================
+     *  DRAG AND DROP
+     * =============================================== */
 
-    function loadTabSet(id) {
-        $.post(customTabsAdmin.ajax_url, {
-            action: 'get_tab_set',
-            nonce: customTabsAdmin.nonce,
-            tab_set_id: id
-        }, function(response) {
-            if (response.success) {
-                const data = response.data;
-                currentEditId = data.id;
-                $('#editing-tab-set-id').val(data.id);
-                $('#tab-set-name').val(data.name);
-                $('#editor-title').text('Edit: ' + data.name);
+    function bindDragAndDrop() {
+        var dragged = null;
 
-                // Show shortcode
-                const shortcode = '[custom_tabs id="' + data.id + '"]';
-                $('#shortcode-output').val(shortcode);
-                $('#shortcode-copy-area').show();
-
-                // Load tabs
-                $('#tabs-container').empty();
-                tabCounter = 0;
-                data.tabs.forEach(function(tab) {
-                    addTab(tab.title, tab.content);
-                });
-
-                // Highlight active in sidebar
-                $('.tab-set-item').removeClass('active');
-                $('.tab-set-item[data-id="' + id + '"]').addClass('active');
-
-                showEditor();
-                updatePreview();
-            }
-        });
-    }
-
-    // ========================
-    // SAVE TAB SET
-    // ========================
-
-    function saveTabSet(e) {
-        e.preventDefault();
-
-        const name = $('#tab-set-name').val().trim();
-        if (!name) {
-            alert('Please enter a tab set name.');
-            return;
-        }
-
-        const tabs = [];
-        $('#tabs-container .tab-editor-item').each(function() {
-            const title = $(this).find('.tab-title-input').val().trim();
-            const content = $(this).find('.tab-content-textarea').val();
-            if (title) {
-                tabs.push({ title: title, content: content });
-            }
-        });
-
-        if (tabs.length === 0) {
-            alert('Please add at least one tab.');
-            return;
-        }
-
-        const postData = {
-            action: 'save_tab_set',
-            nonce: customTabsAdmin.nonce,
-            tab_set_id: currentEditId,
-            tab_set_name: name,
-            tabs: tabs
-        };
-
-        $('#save-tab-set').prop('disabled', true).text('Saving...');
-
-        $.post(customTabsAdmin.ajax_url, postData, function(response) {
-            $('#save-tab-set').prop('disabled', false).text('Save Tab Set');
-
-            if (response.success) {
-                currentEditId = response.data.id;
-                $('#editing-tab-set-id').val(currentEditId);
-
-                const shortcode = '[custom_tabs id="' + currentEditId + '"]';
-                $('#shortcode-output').val(shortcode);
-                $('#shortcode-copy-area').show();
-                $('#editor-title').text('Edit: ' + name);
-
-                // Show saved status
-                $('#save-status').text('✓ Saved!').fadeIn();
-                setTimeout(function() {
-                    $('#save-status').fadeOut();
-                }, 3000);
-
-                // Refresh sidebar
-                refreshSidebar(currentEditId);
-            } else {
-                alert('Error saving. Please try again.');
-            }
-        });
-    }
-
-    // ========================
-    // DELETE TAB SET
-    // ========================
-
-    function deleteTabSet(id) {
-        if (!confirm('Are you sure you want to delete this tab set? This cannot be undone.')) {
-            return;
-        }
-
-        $.post(customTabsAdmin.ajax_url, {
-            action: 'delete_tab_set',
-            nonce: customTabsAdmin.nonce,
-            tab_set_id: id
-        }, function(response) {
-            if (response.success) {
-                $('.tab-set-item[data-id="' + id + '"]').fadeOut(300, function() {
-                    $(this).remove();
-                    if ($('#tab-sets-list .tab-set-item').length === 0) {
-                        $('#tab-sets-list').html('<li class="no-tab-sets">No tab sets yet. Create one!</li>');
-                    }
-                });
-
-                if (currentEditId === id) {
-                    cancelEdit();
-                }
-            }
-        });
-    }
-
-    // ========================
-    // TAB MANAGEMENT
-    // ========================
-
-    function addNewTab() {
-        addTab('New Tab', '<p>Enter content here.</p>');
-        updatePreview();
-        // Scroll to new tab
-        const container = $('#tabs-container');
-        container.animate({ scrollTop: container.prop('scrollHeight') }, 300);
-    }
-
-    function addTab(title, content) {
-        tabCounter++;
-        const index = tabCounter;
-
-        const html = `
-            <div class="tab-editor-item" data-tab-index="${index}" draggable="true">
-                <div class="tab-editor-header">
-                    <span class="drag-handle dashicons dashicons-menu"></span>
-                    <span class="tab-number">Tab ${$('#tabs-container .tab-editor-item').length + 1}</span>
-                    <span class="tab-title-preview">${escapeHtml(title)}</span>
-                    <button type="button" class="toggle-tab-btn dashicons dashicons-arrow-down-alt2" title="Toggle"></button>
-                    <button type="button" class="remove-tab-btn dashicons dashicons-trash" title="Remove Tab"></button>
-                </div>
-                <div class="tab-editor-body">
-                    <label>Tab Title</label>
-                    <input type="text" class="tab-title-input" value="${escapeAttr(title)}" placeholder="Enter tab title">
-                    
-                    <label>Tab Content</label>
-                    <textarea class="tab-content-textarea" placeholder="Enter tab content (HTML allowed)">${escapeHtml(content)}</textarea>
-                </div>
-            </div>
-        `;
-
-        $('#tabs-container').append(html);
-        renumberTabs();
-    }
-
-    function removeTab() {
-        const item = $(this).closest('.tab-editor-item');
-        const totalTabs = $('#tabs-container .tab-editor-item').length;
-
-        if (totalTabs <= 1) {
-            alert('You must have at least one tab.');
-            return;
-        }
-
-        item.fadeOut(200, function() {
-            $(this).remove();
-            renumberTabs();
-            updatePreview();
-        });
-    }
-
-    function toggleTabBody() {
-        const body = $(this).closest('.tab-editor-item').find('.tab-editor-body');
-        body.toggleClass('collapsed');
-        $(this).toggleClass('collapsed');
-    }
-
-    function renumberTabs() {
-        $('#tabs-container .tab-editor-item').each(function(i) {
-            $(this).find('.tab-number').text('Tab ' + (i + 1));
-        });
-    }
-
-    // ========================
-    // LIVE PREVIEW
-    // ========================
-
-    function updatePreview() {
-        const tabs = [];
-        $('#tabs-container .tab-editor-item').each(function() {
-            tabs.push({
-                title: $(this).find('.tab-title-input').val() || 'Untitled',
-                content: $(this).find('.tab-content-textarea').val() || ''
-            });
-        });
-
-        if (tabs.length === 0) {
-            $('#live-preview').html('<p class="description">Add tabs to see a preview.</p>');
-            return;
-        }
-
-        let tablistHtml = '<div class="tabs__tablist">';
-        let panelsHtml = '';
-
-        tabs.forEach(function(tab, i) {
-            const activeClass = i === 0 ? ' preview-active' : '';
-            tablistHtml += `<button type="button" class="tabs__tab${activeClass}" data-preview-tab="${i}">${escapeHtml(tab.title)}</button>`;
-
-            const visibleClass = i === 0 ? ' preview-visible' : '';
-            panelsHtml += `<div class="tabs__panel${visibleClass}" data-preview-panel="${i}">${tab.content}</div>`;
-        });
-
-        tablistHtml += '</div>';
-
-        const previewHtml = `<div class="tabs">${tablistHtml}${panelsHtml}</div>`;
-        $('#live-preview').html(previewHtml);
-
-        // Bind preview tab clicks
-        $('#live-preview').find('[data-preview-tab]').on('click', function() {
-            const idx = $(this).data('preview-tab');
-            $('#live-preview .tabs__tab').removeClass('preview-active');
-            $('#live-preview .tabs__panel').removeClass('preview-visible');
-            $(this).addClass('preview-active');
-            $('#live-preview [data-preview-panel="' + idx + '"]').addClass('preview-visible');
-        });
-
-        // Also update the title preview in the header
-        $('#tabs-container .tab-editor-item').each(function() {
-            const title = $(this).find('.tab-title-input').val() || 'Untitled';
-            $(this).find('.tab-title-preview').text(title);
-        });
-    }
-
-    // ========================
-    // DRAG AND DROP REORDERING
-    // ========================
-
-    function initDragAndDrop() {
-        let draggedItem = null;
-
-        $(document).on('dragstart', '.tab-editor-item', function(e) {
-            draggedItem = this;
-            $(this).addClass('dragging');
+        $( document ).on( 'dragstart', '.cts-tab-item', function ( e ) {
+            dragged = this;
+            $( this ).addClass( 'cts-tab-item--dragging' );
             e.originalEvent.dataTransfer.effectAllowed = 'move';
-        });
+            // Firefox requires setData to fire drag events
+            e.originalEvent.dataTransfer.setData( 'text/plain', '' );
+        } );
 
-        $(document).on('dragend', '.tab-editor-item', function() {
-            $(this).removeClass('dragging');
-            draggedItem = null;
-            renumberTabs();
-            updatePreview();
-        });
+        $( document ).on( 'dragend', '.cts-tab-item', function () {
+            $( this ).removeClass( 'cts-tab-item--dragging' );
+            dragged = null;
+            renumber();
+            refreshPreview();
+        } );
 
-        $(document).on('dragover', '.tab-editor-item', function(e) {
+        $( document ).on( 'dragover', '.cts-tab-item', function ( e ) {
             e.preventDefault();
             e.originalEvent.dataTransfer.dropEffect = 'move';
 
-            const bounding = this.getBoundingClientRect();
-            const offset = e.originalEvent.clientY - bounding.top;
-
-            if (offset > bounding.height / 2) {
-                $(this).after(draggedItem);
-            } else {
-                $(this).before(draggedItem);
+            if ( this === dragged ) {
+                return;
             }
-        });
 
-        $(document).on('dragover', '#tabs-container', function(e) {
+            var rect   = this.getBoundingClientRect();
+            var midY   = rect.top + rect.height / 2;
+
+            if ( e.originalEvent.clientY < midY ) {
+                $( this ).before( dragged );
+            } else {
+                $( this ).after( dragged );
+            }
+        } );
+
+        $( document ).on( 'drop', '.cts-tab-item', function ( e ) {
             e.preventDefault();
-        });
+            e.stopPropagation();
+        } );
+
+        // Allow dropping on the container itself (e.g. at the end of list)
+        $( document ).on( 'dragover', '#cts-tabs-container', function ( e ) {
+            e.preventDefault();
+        } );
+
+        $( document ).on( 'drop', '#cts-tabs-container', function ( e ) {
+            e.preventDefault();
+        } );
     }
 
-    // ========================
-    // SIDEBAR REFRESH
-    // ========================
+    /* =================================================
+     *  CREATE / LOAD / SAVE / DELETE
+     * =============================================== */
 
-    function refreshSidebar(activeId) {
-        // Instead of full page reload, just update or add the item
-        const name = $('#tab-set-name').val();
-        const shortcode = '[custom_tabs id="' + activeId + '"]';
-        const existing = $('.tab-set-item[data-id="' + activeId + '"]');
+    /** Reset editor for a brand-new tab set. */
+    function createNew() {
+        currentId = '';
+        $( '#cts-editing-id' ).val( '' );
+        $( '#cts-name' ).val( '' );
+        $( '#cts-editor-title' ).text( 'New Tab Set' );
+        $( '#cts-shortcode-area' ).hide();
+        $( '#cts-tabs-container' ).empty();
+        tabCounter = 0;
 
-        if (existing.length) {
-            existing.find('strong').text(name);
-            existing.find('.shortcode-display').text(shortcode);
-        } else {
-            // Remove "no tab sets" message
-            $('.no-tab-sets').remove();
+        addTab( 'Tab One',   '<p>Enter content for tab one here.</p>' );
+        addTab( 'Tab Two',   '<p>Enter content for tab two here.</p>' );
 
-            const newItem = `
-                <li class="tab-set-item active" data-id="${escapeAttr(activeId)}">
-                    <div class="tab-set-item-info">
-                        <strong>${escapeHtml(name)}</strong>
-                        <code class="shortcode-display">${shortcode}</code>
-                    </div>
-                    <div class="tab-set-item-actions">
-                        <button type="button" class="button button-small edit-tab-set" data-id="${escapeAttr(activeId)}">Edit</button>
-                        <button type="button" class="button button-small button-link-delete delete-tab-set" data-id="${escapeAttr(activeId)}">Delete</button>
-                    </div>
-                </li>
-            `;
-            $('#tab-sets-list').append(newItem);
+        showEditor();
+        refreshPreview();
+    }
+
+    /** Fetch an existing set via AJAX and populate the editor. */
+    function loadSet( id ) {
+        $.post( ctsAdmin.ajaxUrl, {
+            action:     'cts_get_tab_set',
+            nonce:      ctsAdmin.nonce,
+            tab_set_id: id,
+        }, function ( res ) {
+            if ( ! res.success ) {
+                alert( res.data && res.data.message ? res.data.message : 'Could not load tab set.' );
+                return;
+            }
+
+            var data = res.data;
+
+            currentId = data.id;
+            $( '#cts-editing-id' ).val( data.id );
+            $( '#cts-name' ).val( data.name );
+            $( '#cts-editor-title' ).text( 'Edit: ' + data.name );
+
+            $( '#cts-shortcode-output' ).val( '[custom_tabs id="' + data.id + '"]' );
+            $( '#cts-shortcode-area' ).show();
+
+            $( '#cts-tabs-container' ).empty();
+            tabCounter = 0;
+
+            $.each( data.tabs, function ( _i, tab ) {
+                addTab( tab.title, tab.content );
+            } );
+
+            highlightSidebar( data.id );
+            showEditor();
+            refreshPreview();
+        } );
+    }
+
+    /** Persist the current editor state via AJAX. */
+    function saveSet( e ) {
+        e.preventDefault();
+
+        var name = $.trim( $( '#cts-name' ).val() );
+        if ( ! name ) {
+            alert( 'Please enter a tab set name.' );
+            $( '#cts-name' ).focus();
+            return;
         }
 
-        $('.tab-set-item').removeClass('active');
-        $('.tab-set-item[data-id="' + activeId + '"]').addClass('active');
+        var tabs = collectTabs();
+        if ( tabs.length === 0 ) {
+            alert( 'Please add at least one tab with a title.' );
+            return;
+        }
+
+        // Build POST data with indexed keys so PHP receives a proper array
+        var postData = {
+            action:       'cts_save_tab_set',
+            nonce:        ctsAdmin.nonce,
+            tab_set_id:   currentId,
+            tab_set_name: name,
+        };
+
+        $.each( tabs, function ( i, tab ) {
+            postData[ 'tabs[' + i + '][title]' ]   = tab.title;
+            postData[ 'tabs[' + i + '][content]' ] = tab.content;
+        } );
+
+        $( '#cts-save' ).prop( 'disabled', true ).text( 'Saving…' );
+
+        $.post( ctsAdmin.ajaxUrl, postData, function ( res ) {
+            $( '#cts-save' ).prop( 'disabled', false ).text( 'Save Tab Set' );
+
+            if ( ! res.success ) {
+                alert( res.data && res.data.message ? res.data.message : 'Error saving.' );
+                return;
+            }
+
+            currentId = res.data.id;
+            $( '#cts-editing-id' ).val( currentId );
+            $( '#cts-editor-title' ).text( 'Edit: ' + name );
+
+            $( '#cts-shortcode-output' ).val( '[custom_tabs id="' + currentId + '"]' );
+            $( '#cts-shortcode-area' ).show();
+
+            flashStatus( '✓ Saved!' );
+            refreshSidebarItem( currentId, name, tabs.length );
+        } );
     }
 
-    // ========================
-    // UI HELPERS
-    // ========================
+    /** Delete a tab set after confirmation. */
+    function deleteSet( id ) {
+        if ( ! confirm( 'Delete this tab set permanently? This cannot be undone.' ) ) {
+            return;
+        }
+
+        $.post( ctsAdmin.ajaxUrl, {
+            action:     'cts_delete_tab_set',
+            nonce:      ctsAdmin.nonce,
+            tab_set_id: id,
+        }, function ( res ) {
+            if ( ! res.success ) {
+                alert( res.data && res.data.message ? res.data.message : 'Could not delete.' );
+                return;
+            }
+
+            $( '.cts-set-item[data-id="' + id + '"]' ).fadeOut( 250, function () {
+                $( this ).remove();
+                if ( $( '#cts-tab-sets-list .cts-set-item' ).length === 0 ) {
+                    $( '#cts-tab-sets-list' ).html(
+                        '<li class="cts-set-item--empty">No tab sets yet. Create one!</li>'
+                    );
+                }
+            } );
+
+            // If the deleted set was open in the editor, close it
+            if ( currentId === id ) {
+                cancelEdit();
+            }
+        } );
+    }
+
+    /* =================================================
+     *  TAB MANAGEMENT (add / remove / toggle / reorder)
+     * =============================================== */
+
+    /**
+     * Append a new tab editor item.
+     *
+     * @param {string} title
+     * @param {string} content
+     */
+    function addTab( title, content ) {
+        tabCounter++;
+
+        var index = $( '#cts-tabs-container .cts-tab-item' ).length + 1;
+
+        var html =
+            '<div class="cts-tab-item" draggable="true">' +
+                '<div class="cts-tab-item__header">' +
+                    '<span class="cts-tab-item__drag dashicons dashicons-menu"></span>' +
+                    '<span class="cts-tab-item__number">Tab ' + index + '</span>' +
+                    '<span class="cts-tab-item__title-preview">' + esc( title ) + '</span>' +
+                    '<button type="button" class="cts-tab-item__toggle dashicons dashicons-arrow-down-alt2" title="Toggle"></button>' +
+                    '<button type="button" class="cts-tab-item__remove dashicons dashicons-trash" title="Remove"></button>' +
+                '</div>' +
+                '<div class="cts-tab-item__body">' +
+                    '<label>Tab Title</label>' +
+                    '<input type="text" class="cts-input-title" value="' + escAttr( title ) + '" placeholder="Enter tab title">' +
+                    '<label>Tab Content <small>(HTML allowed)</small></label>' +
+                    '<textarea class="cts-textarea-content" placeholder="Enter content here">' + esc( content ) + '</textarea>' +
+                '</div>' +
+            '</div>';
+
+        $( '#cts-tabs-container' ).append( html );
+    }
+
+    /** Remove a tab item (minimum 1 must remain). */
+    function removeTab() {
+        if ( $( '#cts-tabs-container .cts-tab-item' ).length <= 1 ) {
+            alert( 'You must keep at least one tab.' );
+            return;
+        }
+
+        $( this ).closest( '.cts-tab-item' ).fadeOut( 200, function () {
+            $( this ).remove();
+            renumber();
+            refreshPreview();
+        } );
+    }
+
+    /** Collapse / expand the body of a tab editor item. */
+    function toggleBody() {
+        var $body = $( this ).closest( '.cts-tab-item' ).find( '.cts-tab-item__body' );
+        $body.toggleClass( 'cts-body--hidden' );
+        $( this ).toggleClass( 'cts-collapsed' );
+    }
+
+    /** Re-number the "Tab N" labels after reorder or deletion. */
+    function renumber() {
+        $( '#cts-tabs-container .cts-tab-item' ).each( function ( i ) {
+            $( this ).find( '.cts-tab-item__number' ).text( 'Tab ' + ( i + 1 ) );
+        } );
+    }
+
+    /**
+     * Read current tab data from the DOM.
+     *
+     * @return {Array<{title:string, content:string}>}
+     */
+    function collectTabs() {
+        var tabs = [];
+        $( '#cts-tabs-container .cts-tab-item' ).each( function () {
+            var t = $.trim( $( this ).find( '.cts-input-title' ).val() );
+            if ( t ) {
+                tabs.push( {
+                    title:   t,
+                    content: $( this ).find( '.cts-textarea-content' ).val(),
+                } );
+            }
+        } );
+        return tabs;
+    }
+
+    /* =================================================
+     *  LIVE PREVIEW
+     * =============================================== */
+
+    function refreshPreview() {
+        var tabs = collectTabs();
+
+        // Also keep the header title-preview spans in sync
+        $( '#cts-tabs-container .cts-tab-item' ).each( function () {
+            var t = $( this ).find( '.cts-input-title' ).val() || 'Untitled';
+            $( this ).find( '.cts-tab-item__title-preview' ).text( t );
+        } );
+
+        if ( ! tabs.length ) {
+            $( '#cts-preview' ).html( '<p class="description">Add tabs to see a preview.</p>' );
+            return;
+        }
+
+        var tablist = '<div class="tabs__tablist">';
+        var panels  = '';
+
+        $.each( tabs, function ( i, tab ) {
+            var active  = i === 0 ? ' cts-preview-active' : '';
+            var visible = i === 0 ? ' cts-preview-visible' : '';
+
+            tablist += '<button type="button" class="tabs__tab' + active + '" data-pidx="' + i + '">' +
+                           esc( tab.title ) +
+                       '</button>';
+
+            panels += '<div class="tabs__panel' + visible + '" data-ppanel="' + i + '">' +
+                          tab.content +
+                      '</div>';
+        } );
+
+        tablist += '</div>';
+
+        $( '#cts-preview' ).html( '<div class="tabs">' + tablist + panels + '</div>' );
+
+        // Bind click within preview
+        $( '#cts-preview' ).find( '[data-pidx]' ).on( 'click', function () {
+            var idx = $( this ).data( 'pidx' );
+            $( '#cts-preview .tabs__tab' ).removeClass( 'cts-preview-active' );
+            $( '#cts-preview .tabs__panel' ).removeClass( 'cts-preview-visible' );
+            $( this ).addClass( 'cts-preview-active' );
+            $( '#cts-preview [data-ppanel="' + idx + '"]' ).addClass( 'cts-preview-visible' );
+        } );
+    }
+
+    /* =================================================
+     *  SIDEBAR HELPERS
+     * =============================================== */
+
+    function highlightSidebar( id ) {
+        $( '.cts-set-item' ).removeClass( 'cts-set-item--active' );
+        $( '.cts-set-item[data-id="' + id + '"]' ).addClass( 'cts-set-item--active' );
+    }
+
+    /**
+     * Update or insert the sidebar entry for a just-saved tab set.
+     */
+    function refreshSidebarItem( id, name, tabCount ) {
+        var $existing = $( '.cts-set-item[data-id="' + id + '"]' );
+        var shortcode = '[custom_tabs id="' + id + '"]';
+        var countLabel = tabCount === 1 ? '1 tab' : tabCount + ' tabs';
+
+        if ( $existing.length ) {
+            $existing.find( '.cts-set-item__name' ).text( name );
+            $existing.find( '.cts-set-item__shortcode' ).text( shortcode );
+            $existing.find( '.cts-set-item__count' ).text( countLabel );
+        } else {
+            // Remove "no sets" placeholder
+            $( '.cts-set-item--empty' ).remove();
+
+            var li =
+                '<li class="cts-set-item" data-id="' + escAttr( id ) + '">' +
+                    '<div class="cts-set-item__info">' +
+                        '<strong class="cts-set-item__name">' + esc( name ) + '</strong>' +
+                        '<code class="cts-set-item__shortcode">' + shortcode + '</code>' +
+                        '<span class="cts-set-item__count">' + countLabel + '</span>' +
+                    '</div>' +
+                    '<div class="cts-set-item__actions">' +
+                        '<button type="button" class="button button-small cts-btn-edit" data-id="' + escAttr( id ) + '">Edit</button>' +
+                        '<button type="button" class="button button-small button-link-delete cts-btn-delete" data-id="' + escAttr( id ) + '">Delete</button>' +
+                    '</div>' +
+                '</li>';
+
+            $( '#cts-tab-sets-list' ).append( li );
+        }
+
+        highlightSidebar( id );
+    }
+
+    /* =================================================
+     *  UI HELPERS
+     * =============================================== */
 
     function showEditor() {
-        $('#placeholder-panel').hide();
-        $('#editor-panel').show();
+        $( '#cts-placeholder' ).hide();
+        $( '#cts-editor' ).show();
+        $( '#cts-name' ).focus();
     }
 
     function cancelEdit() {
-        currentEditId = '';
-        $('#editor-panel').hide();
-        $('#placeholder-panel').show();
-        $('.tab-set-item').removeClass('active');
+        currentId = '';
+        $( '#cts-editor' ).hide();
+        $( '#cts-placeholder' ).show();
+        $( '.cts-set-item' ).removeClass( 'cts-set-item--active' );
     }
 
     function copyShortcode() {
-        const input = document.getElementById('shortcode-output');
-        input.select();
-        input.setSelectionRange(0, 99999);
+        var el = document.getElementById( 'cts-shortcode-output' );
+        el.select();
+        el.setSelectionRange( 0, 99999 );
 
-        navigator.clipboard.writeText(input.value).then(function() {
-            const btn = $('#copy-shortcode');
-            btn.text('Copied!');
-            setTimeout(function() {
-                btn.text('Copy');
-            }, 2000);
-        });
+        if ( navigator.clipboard && navigator.clipboard.writeText ) {
+            navigator.clipboard.writeText( el.value ).then( function () {
+                flashCopyButton();
+            } );
+        } else {
+            // Fallback for older browsers
+            document.execCommand( 'copy' );
+            flashCopyButton();
+        }
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
+    function flashCopyButton() {
+        var $btn = $( '#cts-copy-shortcode' );
+        $btn.text( 'Copied!' );
+        setTimeout( function () { $btn.text( 'Copy' ); }, 2000 );
     }
 
-    function escapeAttr(text) {
-        return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    function flashStatus( message ) {
+        var $s = $( '#cts-save-status' );
+        $s.text( message ).fadeIn( 100 );
+        setTimeout( function () { $s.fadeOut( 400 ); }, 3000 );
     }
 
-})(jQuery);
+    function scrollToBottom() {
+        var $c = $( '#cts-tabs-container' );
+        if ( $c[0] ) {
+            $c.animate( { scrollTop: $c[0].scrollHeight }, 250 );
+        }
+    }
+
+    /* -------------------------------------------------
+     *  Escaping utilities
+     * ----------------------------------------------- */
+
+    function esc( text ) {
+        var d = document.createElement( 'div' );
+        d.appendChild( document.createTextNode( text ) );
+        return d.innerHTML;
+    }
+
+    function escAttr( text ) {
+        return String( text )
+            .replace( /&/g, '&amp;' )
+            .replace( /"/g, '&quot;' )
+            .replace( /'/g, '&#39;' )
+            .replace( /</g, '&lt;' )
+            .replace( />/g, '&gt;' );
+    }
+
+} )( jQuery );
