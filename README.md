@@ -31,7 +31,13 @@ Copy the generated shortcode
 ```    
 Place this shortcode in any post, page, or widget that supports shortcodes.    
 
-### Features   
+### Features       
+- Embed tabbed content anywhere with [custom_tabs id="your-id"] — works in posts, pages, widgets, and template files    
+- Unlimited Tab Sets    
+- Create as many independent tab groups as needed, each with its own unique ID and shortcodeUnlimited Tabs Per Set    
+- Each tab set can hold any number of individual tabs   
+- HTML Content Support   
+- Tab content accepts full HTML (filtered through wp_kses_post for security)   
 
 ### License
 Apache License 2.0
