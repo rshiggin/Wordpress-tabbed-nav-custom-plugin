@@ -43,4 +43,4 @@ Place this shortcode in any post, page, or widget that supports shortcodes.
 Apache License 2.0
 
 ### Admin UI
-![Screenshot](assets/tabs-admin-example.png)
+![](assets/tabs-admin-example.png)
